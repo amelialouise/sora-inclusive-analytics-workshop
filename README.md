@@ -1,2 +1,2 @@
 # sora-inclusive-analytics-workshop
-This repo has the basic R setup for the 8-27-2025 workshop. R packages pre-installed and versioned using `renv`. 
+This project includes exploratory data analysis created during the morning session's Inclusive Analytics Workshop. 

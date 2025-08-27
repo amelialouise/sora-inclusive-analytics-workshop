@@ -9,12 +9,198 @@ Some R packages we will be using for the workshop. Feel free to add others durin
 library(here)
 library(dplyr)
 library(RSocrata)
+library(ggplot2)
+library(inspectdf)
+library(forcats)
 ```
 
 The dataset we will be using is the State Expenditures data set, which you can load into your R session by passing the URL to `RSocrata::read.socrata()`. 
 
+About the data: 
+<https://data.oregon.gov/Revenue-Expense/Agency-Expenditures-Multi-Year-Report/y9g9-xsxs/about_data>
+
+This report provides information on expenditures (i.e., cash transactions/payments) for 
+the agencies that utilize the Statewide Financial Management Application (SFMA) issued 
+for the fiscal year 2024 (July 1, 2023 - June 30, 2024). 
+
+# Purpose
+
+Before defining our purpose we should consider... 
+
+## Who might be interested in an analysis of expenditures? 
+
+* Public employees  
+* Agencies/agency heads  
+* Public/taxpayers  
+* Legislators  
+* Vendors/Suppliers  
+* Auditors  
+* Analysts
+
+
+## What are the benefits?
+
+* Process improvements (internal and external)  
+* Viewing outliers (identifying too small or too large of expenditures) 
+* Trends, e.g. seeing the general pattern - what are the highest/lowest expenditures, what are the most common expenses, etc.
+* Compliance, to ensure that we are following our procurement rules
+* Opportunities for consolidating, getting better contracts
+* Better understanding of where taxes go
+
+## What are the risks? 
+
+* Legislators may see the analysis and think that costs are too high and use it as rationale to cut budgets  
+* Patterns may be revealed that harm reputations (institutional, individual, etc)
+
+Purpose: 
+Make the expenditures data set more accessible to those interested in the analysis by providing
+
+Expense trends  
+
+* Overall expenses by year  
+* Expense by year by agency  
+* Expense by category by agency  
+* Expense by category by vendor  
+
+Deep dive into outliers  
+
+* High & Low expenditures  
+* Expenses out of compliance with procurement statues/rules/guidance
+
+# Viewing the data  
+
+*We do not build an analysis around the data we have; we find the data for the analysis that we need!*
+
+This chunk shows two ways we can load the data, one relies on an API via RSocrata, whereas the second option relies on exporting the data manually from 
+Data.Oregon.Gov.
+
 ```{r load-expenditure-data}
+# Using RSocrata
 state_expenditures <- read.socrata("https://data.oregon.gov/Revenue-Expense/Agency-Expenditures-Multi-Year-Report/y9g9-xsxs")
 
-state_expenditures
+# Using csv file stored locally
+#state_expenditures <- read.csv(here("data", "Agency_Expenditures_–_Multi-Year_Report_20250827.csv"), stringsAsFactors = FALSE)
+
+glimpse(state_expenditures)
 ```
+## Data quality check
+
+We'll clean-up some of the types that should be treated as characters. We'll also rename variables for improved readability.
+
+```{r}
+state_expenditures_clean <- 
+  state_expenditures %>% 
+  mutate(
+    agency = as.character(agency),
+    expend_class = as.character(expend_class),
+    budget_class = as.character(budget_class)
+  ) %>% 
+  rename(
+    "agency_code" = agency,
+    "agency_name" = agency_1,
+    "budget_class_code" = budget_class,
+    "buget_class_name" = budget_class_1,
+    "expend_class_code" = expend_class,
+    "expend_class_name" = expend_class_1
+  )
+
+glimpse(state_expenditures_clean)
+```
+We can use `inspectdf` to view the unique counts, and most common values for each of the categorical variables. 
+
+```{r}
+state_expenditures_clean %>% 
+  inspect_cat()
+```
+
+We can see that there are discrepancies between the agency, budget, and expenditure class codes since the total counts for these are different. 
+Let's take a look at those. 
+
+```{r identify-duplicates}
+state_expenditures_clean %>% 
+  distinct(agency_code, agency_name) %>% 
+  count(agency_code, sort = TRUE) %>% 
+  filter(n > 1)
+
+
+state_expenditures_clean %>% 
+  distinct(budget_class_code, buget_class_name) %>% 
+  count(budget_class_code, sort = TRUE) %>% 
+  filter(n > 1)
+
+
+state_expenditures_clean %>% 
+  distinct(expend_class_code, expend_class_name) %>% 
+  count(expend_class_code, sort = TRUE) %>% 
+  filter(n > 1)
+```
+
+
+At this point we may decide that the data quality issues require engagement with the data owners of this asset to proceed with our analysis. 
+
+Or we may be comfortable with proceeding!
+
+# Exploratory Analysis
+
+Viewing total expenses by year
+
+```{r}
+state_expenditures_clean %>% 
+  group_by(fiscal_year) %>% 
+  reframe(total_expenses_in_billions = sum(expense)/1e9)
+```
+
+```{r}
+state_expenditures_clean %>% 
+  group_by(fiscal_year) %>% 
+  reframe(total_expenses_in_billions = sum(expense)/1e9) %>% 
+  ggplot(aes(x = as.factor(fiscal_year), y = total_expenses_in_billions)) + 
+  geom_col() +
+  scale_y_continuous(labels = scales::label_currency()) +
+  theme_classic() + 
+  labs(
+    y = "Total Expenses ($ Billions)", 
+    x = NULL,
+    caption = "\nData source:\n \'Agency Expenditures - Multi-Year Report\'\n As of December 17, 2024 from Data.Oregon.Gov"
+  )
+```
+
+
+How about viewing by agencies with the top 5 highest expenses in 2019? 
+
+```{r}
+top_agencies <- 
+  state_expenditures_clean %>% 
+  filter(fiscal_year == 2024) %>% 
+  group_by(agency_name) %>% 
+  reframe(total_expenses = sum(expense)) %>% 
+  arrange(-total_expenses) %>% 
+  slice(1:5) %>% 
+  pull(agency_name)
+
+summary_by_top_agencies <- 
+  state_expenditures_clean %>% 
+  filter(agency_name %in% top_agencies) %>% 
+  group_by(fiscal_year, agency_name) %>% 
+  reframe(total_expenses_in_billions = sum(expense)/1e9) %>% 
+  mutate(
+    agency_name = fct_reorder(agency_name, total_expenses_in_billions, .desc = TRUE)
+  )
+  
+summary_by_top_agencies  %>% 
+  ggplot(aes(x = as.factor(fiscal_year), y = total_expenses_in_billions, group = agency_name)) + 
+  geom_col() +
+  facet_wrap(~ agency_name, ncol = 3, scales = "free_y", axes = "margins") + 
+  scale_y_continuous(labels = scales::label_currency()) +
+  theme_classic() + 
+  labs(
+    y = "Total Expenses ($ Billions)", 
+    x = NULL,
+    caption = "\nData source:\n \'Agency Expenditures - Multi-Year Report\'\n As of December 17, 2024 from Data.Oregon.Gov",
+    title = "Agencies with the Top Highest Expenditures in 2024",
+    subtitle = "Axes for total expenses varies by agency to show differences in scale."
+  )
+```
+
+8.27.2025  
+Amelia L. Vargas
