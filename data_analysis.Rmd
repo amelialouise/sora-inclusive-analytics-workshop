@@ -6,6 +6,7 @@ output: html_notebook
 Some R packages we will be using for the workshop. Feel free to add others during the session. 
 
 ```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
 library(here)
 library(dplyr)
 library(RSocrata)
@@ -88,13 +89,10 @@ glimpse(state_expenditures)
 We'll clean-up some of the types that should be treated as characters. We'll also rename variables for improved readability.
 
 ```{r echo=TRUE}
+# basic clean-up
 state_expenditures_clean <- 
   state_expenditures %>% 
-  mutate(
-    agency = as.character(agency),
-    expend_class = as.character(expend_class),
-    budget_class = as.character(budget_class)
-  ) %>% 
+  mutate(across(c(agency , expend_class, budget_class), ~as.character(.))) %>% 
   rename(
     "agency_code" = agency,
     "agency_name" = agency_1,
@@ -109,6 +107,7 @@ glimpse(state_expenditures_clean)
 We can use `inspectdf` to view the unique counts, and most common values for each of the categorical variables. 
 
 ```{r echo=TRUE}
+# unique counts by category
 state_expenditures_clean %>% 
   inspect_cat()
 ```
@@ -117,24 +116,33 @@ We can see that there are discrepancies between the agency, budget, and expendit
 Let's take a look at those. 
 
 ```{r identify-duplicates, echo=TRUE}
+# duplicates for agency codes
 state_expenditures_clean %>% 
   distinct(agency_code, agency_name) %>% 
   count(agency_code, sort = TRUE) %>% 
   filter(n > 1)
 
-
+# duplicates for budget class codes
 state_expenditures_clean %>% 
   distinct(budget_class_code, buget_class_name) %>% 
   count(budget_class_code, sort = TRUE) %>% 
   filter(n > 1)
 
-
+# duplicates for expenditure class codes
 state_expenditures_clean %>% 
   distinct(expend_class_code, expend_class_name) %>% 
   count(expend_class_code, sort = TRUE) %>% 
   filter(n > 1)
 ```
 
+What states are included for vendors?
+
+```{r echo=TRUE}
+# show all states included
+state_expenditures_clean %>% 
+  count(vendor_st, sort = TRUE)
+```
+Interestingly, this extends beyond the US which we recognize by the 'XX', and several Canadian provinces as well. 
 
 At this point we may decide that the data quality issues require engagement with the data owners of this asset to proceed with our analysis. 
 
@@ -166,7 +174,7 @@ state_expenditures_clean %>%
 ```
 
 
-How about viewing by agencies with the top 5 highest expenses in 2019? 
+How about viewing by agencies with the top 5 highest expenses in 2024? 
 
 ```{r echo=TRUE}
 top_agencies <- 
