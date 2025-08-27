@@ -74,7 +74,7 @@ Deep dive into outliers
 This chunk shows two ways we can load the data, one relies on an API via RSocrata, whereas the second option relies on exporting the data manually from 
 Data.Oregon.Gov.
 
-```{r load-expenditure-data}
+```{r load-expenditure-data, echo=TRUE}
 # Using RSocrata
 state_expenditures <- read.socrata("https://data.oregon.gov/Revenue-Expense/Agency-Expenditures-Multi-Year-Report/y9g9-xsxs")
 
@@ -87,7 +87,7 @@ glimpse(state_expenditures)
 
 We'll clean-up some of the types that should be treated as characters. We'll also rename variables for improved readability.
 
-```{r}
+```{r echo=TRUE}
 state_expenditures_clean <- 
   state_expenditures %>% 
   mutate(
@@ -108,7 +108,7 @@ glimpse(state_expenditures_clean)
 ```
 We can use `inspectdf` to view the unique counts, and most common values for each of the categorical variables. 
 
-```{r}
+```{r echo=TRUE}
 state_expenditures_clean %>% 
   inspect_cat()
 ```
@@ -116,7 +116,7 @@ state_expenditures_clean %>%
 We can see that there are discrepancies between the agency, budget, and expenditure class codes since the total counts for these are different. 
 Let's take a look at those. 
 
-```{r identify-duplicates}
+```{r identify-duplicates, echo=TRUE}
 state_expenditures_clean %>% 
   distinct(agency_code, agency_name) %>% 
   count(agency_code, sort = TRUE) %>% 
@@ -144,13 +144,13 @@ Or we may be comfortable with proceeding!
 
 Viewing total expenses by year
 
-```{r}
+```{r echo=TRUE}
 state_expenditures_clean %>% 
   group_by(fiscal_year) %>% 
   reframe(total_expenses_in_billions = sum(expense)/1e9)
 ```
 
-```{r}
+```{r echo=TRUE}
 state_expenditures_clean %>% 
   group_by(fiscal_year) %>% 
   reframe(total_expenses_in_billions = sum(expense)/1e9) %>% 
@@ -168,7 +168,7 @@ state_expenditures_clean %>%
 
 How about viewing by agencies with the top 5 highest expenses in 2019? 
 
-```{r}
+```{r echo=TRUE}
 top_agencies <- 
   state_expenditures_clean %>% 
   filter(fiscal_year == 2024) %>% 
