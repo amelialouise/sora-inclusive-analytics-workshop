@@ -3,7 +3,7 @@ title: "SORA Inclusive Analytics Workshop"
 output: html_notebook
 ---
 
-Some R packages we will be using for the workshop. Feel free to add others during the session. 
+R packages I used during the workshop. 
 
 ```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
@@ -43,7 +43,7 @@ Before defining our purpose we should consider...
 
 * Process improvements (internal and external)  
 * Viewing outliers (identifying too small or too large of expenditures) 
-* Trends, e.g. seeing the general pattern - what are the highest/lowest expenditures, what are the most common expenses, etc.
+* Trends, e.g. seeing the general pattern - what are the highest/lowest expenditures, what are the most common expenditures, etc.
 * Compliance, to ensure that we are following our procurement rules
 * Opportunities for consolidating, getting better contracts
 * Better understanding of where taxes go
@@ -58,7 +58,7 @@ Make the expenditures data set more accessible to those interested in the analys
 
 Expense trends  
 
-* Overall expenses by year  
+* Overall expenditures by year  
 * Expense by year by agency  
 * Expense by category by agency  
 * Expense by category by vendor  
@@ -66,7 +66,7 @@ Expense trends
 Deep dive into outliers  
 
 * High & Low expenditures  
-* Expenses out of compliance with procurement statues/rules/guidance
+* expenditures out of compliance with procurement statues/rules/guidance
 
 # Viewing the data  
 
@@ -84,7 +84,7 @@ state_expenditures <- read.socrata("https://data.oregon.gov/Revenue-Expense/Agen
 
 glimpse(state_expenditures)
 ```
-## Data quality check
+## Data quality checks
 
 We'll clean-up some of the types that should be treated as characters. We'll also rename variables for improved readability.
 
@@ -97,7 +97,7 @@ state_expenditures_clean <-
     "agency_code" = agency,
     "agency_name" = agency_1,
     "budget_class_code" = budget_class,
-    "buget_class_name" = budget_class_1,
+    "budget_class_name" = budget_class_1,
     "expend_class_code" = expend_class,
     "expend_class_name" = expend_class_1
   )
@@ -124,7 +124,7 @@ state_expenditures_clean %>%
 
 # duplicates for budget class codes
 state_expenditures_clean %>% 
-  distinct(budget_class_code, buget_class_name) %>% 
+  distinct(budget_class_code, budget_class_name) %>% 
   count(budget_class_code, sort = TRUE) %>% 
   filter(n > 1)
 
@@ -142,7 +142,7 @@ What states are included for vendors?
 state_expenditures_clean %>% 
   count(vendor_st, sort = TRUE)
 ```
-Interestingly, this extends beyond the US which we recognize by the 'XX', and several Canadian provinces as well. 
+Interestingly, this extends beyond US-based vendors with 67 rows which includes blanks, 'XX', and several Canadian provinces.
 
 At this point we may decide that the data quality issues require engagement with the data owners of this asset to proceed with our analysis. 
 
@@ -150,39 +150,39 @@ Or we may be comfortable with proceeding!
 
 # Exploratory Analysis
 
-Viewing total expenses by year
+Viewing total expenditures by year
 
 ```{r echo=TRUE}
 state_expenditures_clean %>% 
   group_by(fiscal_year) %>% 
-  reframe(total_expenses_in_billions = sum(expense)/1e9)
+  reframe(total_expend_in_billions = sum(expense)/1e9)
 ```
 
 ```{r echo=TRUE}
 state_expenditures_clean %>% 
   group_by(fiscal_year) %>% 
-  reframe(total_expenses_in_billions = sum(expense)/1e9) %>% 
-  ggplot(aes(x = as.factor(fiscal_year), y = total_expenses_in_billions)) + 
+  reframe(total_expend_in_billions = sum(expense)/1e9) %>% 
+  ggplot(aes(x = as.factor(fiscal_year), y = total_expend_in_billions)) + 
   geom_col() +
   scale_y_continuous(labels = scales::label_currency()) +
   theme_classic() + 
   labs(
-    y = "Total Expenses ($ Billions)", 
+    y = "Total Expenditures ($ Billions)", 
     x = NULL,
     caption = "\nData source:\n \'Agency Expenditures - Multi-Year Report\'\n As of December 17, 2024 from Data.Oregon.Gov"
   )
 ```
 
 
-How about viewing by agencies with the top 5 highest expenses in 2024? 
+How about viewing by agencies with the top 5 highest expenditures in 2024? 
 
 ```{r echo=TRUE}
 top_agencies <- 
   state_expenditures_clean %>% 
   filter(fiscal_year == 2024) %>% 
   group_by(agency_name) %>% 
-  reframe(total_expenses = sum(expense)) %>% 
-  arrange(-total_expenses) %>% 
+  reframe(total_expenditures = sum(expense)) %>% 
+  arrange(-total_expenditures) %>% 
   slice(1:5) %>% 
   pull(agency_name)
 
@@ -190,23 +190,23 @@ summary_by_top_agencies <-
   state_expenditures_clean %>% 
   filter(agency_name %in% top_agencies) %>% 
   group_by(fiscal_year, agency_name) %>% 
-  reframe(total_expenses_in_billions = sum(expense)/1e9) %>% 
+  reframe(total_expend_in_billions = sum(expense)/1e9) %>% 
   mutate(
-    agency_name = fct_reorder(agency_name, total_expenses_in_billions, .desc = TRUE)
+    agency_name = fct_reorder(agency_name, total_expend_in_billions, .desc = TRUE)
   )
   
 summary_by_top_agencies  %>% 
-  ggplot(aes(x = as.factor(fiscal_year), y = total_expenses_in_billions, group = agency_name)) + 
+  ggplot(aes(x = as.factor(fiscal_year), y = total_expend_in_billions, group = agency_name)) + 
   geom_col() +
   facet_wrap(~ agency_name, ncol = 3, scales = "free_y", axes = "margins") + 
   scale_y_continuous(labels = scales::label_currency()) +
   theme_classic() + 
   labs(
-    y = "Total Expenses ($ Billions)", 
+    y = "Total expenditures ($ Billions)", 
     x = NULL,
     caption = "\nData source:\n \'Agency Expenditures - Multi-Year Report\'\n As of December 17, 2024 from Data.Oregon.Gov",
-    title = "Agencies with the Top Highest Expenditures in 2024",
-    subtitle = "Axes for total expenses varies by agency to show differences in scale."
+    title = "Top 5 Agencies with the Highest Expenditures in 2024",
+    subtitle = "Axes for total expenditures varies by agency to show differences in scale."
   )
 ```
 
