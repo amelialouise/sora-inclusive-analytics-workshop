@@ -1,0 +1,20 @@
+---
+title: "SORA Inclusive Analytics Workshop"
+output: html_notebook
+---
+
+Some R packages we will be using for the workshop. Feel free to add others during the session. 
+
+```{r setup}
+library(here)
+library(dplyr)
+library(RSocrata)
+```
+
+The dataset we will be using is the State Expenditures data set, which you can load into your R session by passing the URL to `RSocrata::read.socrata()`. 
+
+```{r load-expenditure-data}
+state_expenditures <- read.socrata("https://data.oregon.gov/Revenue-Expense/Agency-Expenditures-Multi-Year-Report/y9g9-xsxs")
+
+state_expenditures
+```
